@@ -17,6 +17,7 @@
     .light{background:#e2e8f0;color:#0f172a}
     .green{background:#16a34a;color:#fff}
     .red{background:#dc2626;color:#fff}
+    .amber{background:#f59e0b;color:#fff}
     .score{font-size:48px;font-weight:900;text-align:center}
     .match{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc}
     .player-item{border:1px solid #e2e8f0;border-radius:12px;padding:12px;background:#f8fafc;cursor:pointer}
@@ -47,7 +48,6 @@
           <button id="createMatchBtn" class="green">Nový zápas</button>
         </div>
       </div>
-
       <div class="card">
         <div class="between" style="margin-bottom:12px">
           <h2 style="margin:0;font-size:22px">Seznam zápasů</h2>
@@ -82,6 +82,7 @@
         <div class="row" style="margin-bottom:8px">
           <button id="tabAttack" class="dark">Útok</button>
           <button id="tabDefense" class="light">Obrana</button>
+          <button id="tabPenalty" class="light">Tresty</button>
         </div>
         <div id="actionButtons" class="row"></div>
       </div>
@@ -92,7 +93,7 @@
           <button id="ourGoalBtn" class="green">+ Gól my</button>
           <button id="oppGoalBtn" class="red">+ Gól soupeř</button>
           <button id="resetScoreBtn" class="light">Reset skóre</button>
-          <button id="undoBtn" class="light">Undo</button>
+          <button id="undoBtn" class="amber">Undo</button>
         </div>
       </div>
     </section>
@@ -110,7 +111,7 @@
         <table>
           <thead>
             <tr>
-              <th>Hráč</th><th>Góly</th><th>Střely</th><th>%</th><th>As.</th><th>Ztr.</th><th>Tech.</th><th>9m</th><th>6m</th><th>Kř.</th><th>Br.</th><th>7m</th><th>O+</th><th>O-</th><th>Přer.</th><th>Blok</th><th>Zisk</th><th>7m zp.</th>
+              <th>Hráč</th><th>Góly</th><th>Střely</th><th>%</th><th>As.</th><th>Ztr.</th><th>Tech.</th><th>9m</th><th>6m</th><th>Kř.</th><th>Br.</th><th>7m</th><th>O+</th><th>O-</th><th>Přer.</th><th>Blok</th><th>Zisk</th><th>7m zp.</th><th>2 min</th><th>ŽK</th><th>ČK</th>
             </tr>
           </thead>
           <tbody id="overviewPlayers"></tbody>
@@ -130,7 +131,7 @@
   </div>
 
   <script>
-    const STORAGE_KEY = 'handball_match_manager_autosave_v2';
+    const STORAGE_KEY = 'handball_match_manager_autosave_v3';
     const rosterPlayers = ['Grepl Jan','Hampl Jiří','Jurečka David','Sladovník Daniel','Bečička Martin','Hudeček Šimon','Jurík Martin','Jurík Tomáš','Letocha Radim','Sikora Daniel','Zatloukal Matyáš','Javůrek Aleš','Kamaryt Michal','Šestořád Pavel'];
     const rosterKeepers = ['Jakub Hromek','Jiří Sladovník'];
     const shotTypes = ['9m','6m','Křídlo','Brejk','7m'];
@@ -151,16 +152,7 @@
     }
 
     function saveState() {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        history: app.history,
-        playerTab: app.playerTab,
-        screen: app.screen,
-        selectedMatchId: app.selectedMatchId,
-        selectedPlayerIndex: app.selectedPlayerIndex,
-        selectedKeeperIndex: app.selectedKeeperIndex,
-        mode: app.mode,
-        matches: app.matches
-      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(app));
     }
 
     function loadState() {
@@ -168,14 +160,7 @@
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return;
         const saved = JSON.parse(raw);
-        app.history = Array.isArray(saved.history) ? saved.history : [];
-        app.playerTab = saved.playerTab || 'attack';
-        app.screen = saved.screen || 'matches';
-        app.selectedMatchId = saved.selectedMatchId || null;
-        app.selectedPlayerIndex = Number.isInteger(saved.selectedPlayerIndex) ? saved.selectedPlayerIndex : null;
-        app.selectedKeeperIndex = Number.isInteger(saved.selectedKeeperIndex) ? saved.selectedKeeperIndex : null;
-        app.mode = saved.mode || 'player';
-        app.matches = Array.isArray(saved.matches) ? saved.matches : [];
+        Object.assign(app, saved);
       } catch (_) {}
     }
 
@@ -215,6 +200,7 @@
         players: rosterPlayers.map(name => ({
           name, goals: 0, shots: 0, assists: 0, losses: 0, techErrors: 0,
           defPlus: 0, defMinus: 0, interruptions: 0, blocks: 0, gains: 0, caused7m: 0,
+          twoMin: 0, yellow: 0, red: 0,
           byType: Object.fromEntries(shotTypes.map(t => [t, { goals: 0, shots: 0 }]))
         })),
         keepers: rosterKeepers.map(name => ({
@@ -330,6 +316,17 @@
       if (type === 'blocks') p.blocks += 1;
       if (type === 'gains') p.gains += 1;
       if (type === 'caused7m') p.caused7m += 1;
+      render();
+    }
+
+    function addPenalty(type) {
+      const match = currentMatch();
+      if (!match || app.selectedPlayerIndex === null) return;
+      pushHistory();
+      const p = match.players[app.selectedPlayerIndex];
+      if (type === 'twoMin') p.twoMin += 1;
+      if (type === 'yellow') p.yellow += 1;
+      if (type === 'red') p.red += 1;
       render();
     }
 
@@ -455,7 +452,7 @@
             <button onclick="addPlayerShot('${t}')" class="light">${t} střela</button>
           `).join('')}
         `;
-      } else {
+      } else if (app.playerTab === 'defense') {
         wrap.innerHTML = `
           <button onclick="addDefense('plus')" class="light">Obrana+</button>
           <button onclick="addDefense('minus')" class="light">Obrana-</button>
@@ -464,16 +461,26 @@
           <button onclick="addDefense('gains')" class="light">Zisk</button>
           <button onclick="addDefense('caused7m')" class="light">Způsobená 7m</button>
         `;
+      } else {
+        wrap.innerHTML = `
+          <button onclick="addPenalty('twoMin')" class="light">2 min</button>
+          <button onclick="addPenalty('yellow')" class="light">Žlutá karta</button>
+          <button onclick="addPenalty('red')" class="light">Červená karta</button>
+        `;
       }
     }
 
     function renderTabs() {
       const attack = document.getElementById('tabAttack');
       const defense = document.getElementById('tabDefense');
-      attack.style.display = app.mode === 'player' ? 'inline-block' : 'none';
-      defense.style.display = app.mode === 'player' ? 'inline-block' : 'none';
+      const penalty = document.getElementById('tabPenalty');
+      const show = app.mode === 'player';
+      attack.style.display = show ? 'inline-block' : 'none';
+      defense.style.display = show ? 'inline-block' : 'none';
+      penalty.style.display = show ? 'inline-block' : 'none';
       attack.className = app.playerTab === 'attack' ? 'dark' : 'light';
       defense.className = app.playerTab === 'defense' ? 'dark' : 'light';
+      penalty.className = app.playerTab === 'penalty' ? 'dark' : 'light';
     }
 
     function renderLive() {
@@ -496,7 +503,7 @@
       const keepersBody = document.getElementById('overviewKeepers');
 
       if (!match) {
-        playersBody.innerHTML = '<tr><td colspan="18">Nejprve otevři zápas.</td></tr>';
+        playersBody.innerHTML = '<tr><td colspan="21">Nejprve otevři zápas.</td></tr>';
         keepersBody.innerHTML = '<tr><td colspan="11">Nejprve otevři zápas.</td></tr>';
         return;
       }
@@ -523,6 +530,9 @@
             <td>${p.blocks}</td>
             <td>${p.gains}</td>
             <td>${p.caused7m}</td>
+            <td>${p.twoMin}</td>
+            <td>${p.yellow}</td>
+            <td>${p.red}</td>
           </tr>`;
       }).join('');
 
@@ -570,6 +580,7 @@
       byId('createMatchBtn').onclick = createMatch;
       byId('tabAttack').onclick = () => setTab('attack');
       byId('tabDefense').onclick = () => setTab('defense');
+      byId('tabPenalty').onclick = () => setTab('penalty');
       byId('ourGoalBtn').onclick = () => addGoal('our');
       byId('oppGoalBtn').onclick = () => addGoal('opp');
       byId('resetScoreBtn').onclick = resetScore;
