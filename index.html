@@ -1157,7 +1157,13 @@ function wire() {
   document.getElementById('oppGoalBtn').onclick = () => addGoal('opp');
   document.getElementById('resetScoreBtn').onclick = resetScore;
 }
+window.addEventListener('beforeunload', saveState);
 
+document.addEventListener('visibilitychange', () => {
+
+  if (document.hidden) saveState();
+
+});
 loadState();
 wire();
 render();
