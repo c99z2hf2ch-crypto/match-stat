@@ -336,6 +336,8 @@ function normalizeApp() {
   app.matches.forEach(match => {
     if (!Array.isArray(match.players)) match.players = [];
     if (!Array.isArray(match.keepers)) match.keepers = [];
+    if (typeof match.ourScore !== 'number') match.ourScore = 0;
+    if (typeof match.oppScore !== 'number') match.oppScore = 0;
 
     app.masterPlayers.forEach(name => {
       if (!match.players.find(p => p.name === name)) match.players.push(playerTemplate(name));
@@ -346,17 +348,39 @@ function normalizeApp() {
 
     match.players.forEach(player => {
       if (typeof player.active !== 'boolean') player.active = true;
+      player.goals = Number(player.goals || 0);
+      player.shots = Number(player.shots || 0);
+      player.assists = Number(player.assists || 0);
+      player.losses = Number(player.losses || 0);
+      player.techErrors = Number(player.techErrors || 0);
+      player.defPlus = Number(player.defPlus || 0);
+      player.defMinus = Number(player.defMinus || 0);
+      player.interruptions = Number(player.interruptions || 0);
+      player.blocks = Number(player.blocks || 0);
+      player.gains = Number(player.gains || 0);
+      player.caused7m = Number(player.caused7m || 0);
+      player.twoMin = Number(player.twoMin || 0);
+      player.yellow = Number(player.yellow || 0);
+      player.red = Number(player.red || 0);
       if (!player.byType) player.byType = Object.fromEntries(shotTypes.map(t => [t, { goals: 0, shots: 0 }]));
       shotTypes.forEach(type => {
         if (!player.byType[type]) player.byType[type] = { goals: 0, shots: 0 };
+        player.byType[type].goals = Number(player.byType[type].goals || 0);
+        player.byType[type].shots = Number(player.byType[type].shots || 0);
       });
     });
 
     match.keepers.forEach(keeper => {
       if (typeof keeper.active !== 'boolean') keeper.active = true;
+      keeper.saves = Number(keeper.saves || 0);
+      keeper.shots = Number(keeper.shots || 0);
+      keeper.fastPlus = Number(keeper.fastPlus || 0);
+      keeper.fastMinus = Number(keeper.fastMinus || 0);
       if (!keeper.byType) keeper.byType = Object.fromEntries(shotTypes.map(t => [t, { saves: 0, shots: 0 }]));
       shotTypes.forEach(type => {
         if (!keeper.byType[type]) keeper.byType[type] = { saves: 0, shots: 0 };
+        keeper.byType[type].saves = Number(keeper.byType[type].saves || 0);
+        keeper.byType[type].shots = Number(keeper.byType[type].shots || 0);
       });
     });
   });
@@ -995,7 +1019,12 @@ function renderOverview() {
     return `
       <tr>
         <td>${keeper.name}</td><td>${keeperRating(keeper).toFixed(1)}</td><td>${keeper.saves}</td><td>${keeper.shots}</td><td>${pct}%</td>
-        <td>${keeper.byType['9m'].saves}/${keeper.byType['9m'].shots}</td><td>${keeper.byType['6m'].saves}/${keeper.byType['6m'].shots}</td><td>${keeper.byType['Křídlo'].saves}/${keeper.byType['Křídlo'].shots}</td><td>${keeper.byType['Brejk'].saves}/${keeper.byType['Brejk'].shots}</td><td>${keeper.byType['7m'].saves}/${keeper.byType['7m'].shots}</td><td>${keeper.fastPlus}</td><td>${keeper.fastMinus}</td>
+        <td>${keeper.byType['9m'].saves}/${keeper.byType['9m'].shots}</td>
+        <td>${keeper.byType['6m'].saves}/${keeper.byType['6m'].shots}</td>
+        <td>${keeper.byType['Křídlo'].saves}/${keeper.byType['Křídlo'].shots}</td>
+        <td>${keeper.byType['Brejk'].saves}/${keeper.byType['Brejk'].shots}</td>
+        <td>${keeper.byType['7m'].saves}/${keeper.byType['7m'].shots}</td>
+        <td>${keeper.fastPlus}</td><td>${keeper.fastMinus}</td>
       </tr>
     `;
   }).join('');
@@ -1005,253 +1034,123 @@ function renderSeason() {
   const teamBody = document.getElementById('seasonTeam');
   const playersBody = document.getElementById('seasonPlayers');
   const keepersBody = document.getElementById('seasonKeepers');
-  const playerMap = {};
-  const keeperMap = {};
 
-  let totalMatches = app.matches.length;
-  let totalGoals = 0;
-  let totalShots = 0;
-  let totalAssists = 0;
-  let totalLosses = 0;
-  let totalTech = 0;
-  let totalDefPlus = 0;
-  let totalDefMinus = 0;r.shots}</td><td>${pct}%</td>
-        <td>${keeper.byType['9m'].saves}/${keeper.byType['9m'].shots}</td><td>${keeper.byType['6m'].saves}/${keeper.byType['6m'].shots}</td><td>${keeper.byType['Křídlo'].saves}/${keeper.byType['Křídlo'].shots}</td><td>${keeper.byType['Brejk'].saves}/${keeper.byType['Brejk'].shots}</td><td>${keeper.byType['7m'].saves}/${keeper.byType['7m'].shots}</td><td>${keeper.fastPlus}</td><td>${keeper.fastMinus}</td>
-      </tr>
-    `;
-  }).join('');
-}
-
-function renderSeason() {
-  const teamBody = document.getElementById('seasonTeam');
-  const playersBody = document.getElementById('seasonPlayers');
-  const keepersBody = document.getElementById('seasonKeepers');
-  const playerMap = {};
-  const keeperMap = {};
-
-  let totalMatches = app.matches.length;
-  let totalGoals = 0;
-  let totalShots = 0;
-  let totalAssists = 0;
-  let totalLosses = 0;
-  let totalTech = 0;
-  let totalDefPlus = 0;
-  let totalDefMinus = 0;
-  let totalInterruptions = 0;
-  let totalBlocks = 0;
-  let totalGains = 0;
-  let totalCaused7 = 0;
-  let totalTwoMin = 0;
-  let totalYellow = 0;
-  let totalRed = 0;
-  let totalKeeperSaves = 0;
-  let totalKeeperShots = 0;
-
-  for (const match of app.matches) {
-    for (const player of match.players.filter(p => p.active)) {
-      totalGoals += player.goals;
-      totalShots += player.shots;
-      totalAssists += player.assists;
-      totalLosses += player.losses;
-      totalTech += player.techErrors;
-      totalDefPlus += player.defPlus;
-      totalDefMinus += player.defMinus;
-      totalInterruptions += player.interruptions;
-      totalBlocks += player.blocks;
-      totalGains += player.gains;
-      totalCaused7 += player.caused7m;
-      totalTwoMin += player.twoMin;
-      totalYellow += player.yellow;
-      totalRed += player.red;
-
-      if (!playerMap[player.name]) {
-        playerMap[player.name] = {
-          name: player.name,
-          matches: 0,
-          goals: 0,
-          shots: 0,
-          assists: 0,
-          losses: 0,
-          techErrors: 0,
-          defPlus: 0,
-          defMinus: 0,
-          interruptions: 0,
-          blocks: 0,
-          gains: 0,
-          caused7m: 0,
-          twoMin: 0,
-          yellow: 0,
-          red: 0,
-          byType: Object.fromEntries(shotTypes.map(t => [t, { goals: 0, shots: 0 }]))
-        };
-      }
-
-      const aggregate = playerMap[player.name];
-      aggregate.matches += 1;
-      aggregate.goals += player.goals;
-      aggregate.shots += player.shots;
-      aggregate.assists += player.assists;
-      aggregate.losses += player.losses;
-      aggregate.techErrors += player.techErrors;
-      aggregate.defPlus += player.defPlus;
-      aggregate.defMinus += player.defMinus;
-      aggregate.interruptions += player.interruptions;
-      aggregate.blocks += player.blocks;
-      aggregate.gains += player.gains;
-      aggregate.caused7m += player.caused7m;
-      aggregate.twoMin += player.twoMin;
-      aggregate.yellow += player.yellow;
-      aggregate.red += player.red;
-
-      for (const type of shotTypes) {
-        aggregate.byType[type].goals += player.byType[type].goals;
-        aggregate.byType[type].shots += player.byType[type].shots;
-      }
-    }
-
-    for (const keeper of match.keepers.filter(k => k.active)) {
-      totalKeeperSaves += keeper.saves;
-      totalKeeperShots += keeper.shots;
-
-      if (!keeperMap[keeper.name]) {
-        keeperMap[keeper.name] = {
-          name: keeper.name,
-          matches: 0,
-          saves: 0,
-          shots: 0,
-          fastPlus: 0,
-          fastMinus: 0,
-          byType: Object.fromEntries(shotTypes.map(t => [t, { saves: 0, shots: 0 }]))
-        };
-      }
-
-      const aggregate = keeperMap[keeper.name];
-      aggregate.matches += 1;
-      aggregate.saves += keeper.saves;
-      aggregate.shots += keeper.shots;
-      aggregate.fastPlus += keeper.fastPlus;
-      aggregate.fastMinus += keeper.fastMinus;
-
-      for (const type of shotTypes) {
-        aggregate.byType[type].saves += keeper.byType[type].saves;
-        aggregate.byType[type].shots += keeper.byType[type].shots;
-      }
-    }
+  if (!app.matches.length) {
+    teamBody.innerHTML = '<tr><td colspan="2">Žádná data</td></tr>';
+    playersBody.innerHTML = '<tr><td colspan="23">Žádná data</td></tr>';
+    keepersBody.innerHTML = '<tr><td colspan="13">Žádná data</td></tr>';
+    return;
   }
 
-  const shotPct = totalShots ? Math.round((totalGoals / totalShots) * 100) : 0;
-  const keeperPct = totalKeeperShots ? Math.round((totalKeeperSaves / totalKeeperShots) * 100) : 0;
+  const playersMap = {};
+  const keepersMap = {};
+
+  app.matches.forEach(match => {
+    match.players.forEach(p => {
+      if (!playersMap[p.name]) playersMap[p.name] = { ...playerTemplate(p.name), matches: 0 };
+      const t = playersMap[p.name];
+      if (p.active) t.matches++;
+      Object.keys(p).forEach(k => {
+        if (typeof p[k] === 'number') t[k] = (t[k] || 0) + p[k];
+      });
+      shotTypes.forEach(type => {
+        t.byType[type].goals += p.byType[type].goals;
+        t.byType[type].shots += p.byType[type].shots;
+      });
+    });
+
+    match.keepers.forEach(k => {
+      if (!keepersMap[k.name]) keepersMap[k.name] = { ...keeperTemplate(k.name), matches: 0 };
+      const t = keepersMap[k.name];
+      if (k.active) t.matches++;
+      Object.keys(k).forEach(key => {
+        if (typeof k[key] === 'number') t[key] = (t[key] || 0) + k[key];
+      });
+      shotTypes.forEach(type => {
+        t.byType[type].saves += k.byType[type].saves;
+        t.byType[type].shots += k.byType[type].shots;
+      });
+    });
+  });
+
+  const playersArr = Object.values(playersMap);
+  const keepersArr = Object.values(keepersMap);
+
+  const teamGoals = playersArr.reduce((s,p)=>s+p.goals,0);
+  const teamShots = playersArr.reduce((s,p)=>s+p.shots,0);
+  const teamPct = teamShots ? Math.round((teamGoals/teamShots)*100) : 0;
+  const keeperSaves = keepersArr.reduce((s,k)=>s+k.saves,0);
+  const keeperShots = keepersArr.reduce((s,k)=>s+k.shots,0);
+  const keeperPct = keeperShots ? Math.round((keeperSaves/keeperShots)*100) : 0;
 
   teamBody.innerHTML = `
-    <tr><td>Zápasy</td><td>${totalMatches}</td></tr>
-    <tr><td>Týmové góly</td><td>${totalGoals}</td></tr>
-    <tr><td>Týmové střely</td><td>${totalShots}</td></tr>
-    <tr><td>Úspěšnost střelby</td><td>${shotPct}%</td></tr>
-    <tr><td>Asistence</td><td>${totalAssists}</td></tr>
-    <tr><td>Ztráty</td><td>${totalLosses}</td></tr>
-    <tr><td>Technické chyby</td><td>${totalTech}</td></tr>
-    <tr><td>Obrana+</td><td>${totalDefPlus}</td></tr>
-    <tr><td>Obrana-</td><td>${totalDefMinus}</td></tr>
-    <tr><td>Přerušení</td><td>${totalInterruptions}</td></tr>
-    <tr><td>Bloky</td><td>${totalBlocks}</td></tr>
-    <tr><td>Zisky</td><td>${totalGains}</td></tr>
-    <tr><td>Způsobená 7m</td><td>${totalCaused7}</td></tr>
-    <tr><td>2 min</td><td>${totalTwoMin}</td></tr>
-    <tr><td>Žluté karty</td><td>${totalYellow}</td></tr>
-    <tr><td>Červené karty</td><td>${totalRed}</td></tr>
-    <tr><td>Zákroky brankářů</td><td>${totalKeeperSaves}</td></tr>
-    <tr><td>Střely na brankáře</td><td>${totalKeeperShots}</td></tr>
+    <tr><td>Góly</td><td>${teamGoals}</td></tr>
+    <tr><td>Střely</td><td>${teamShots}</td></tr>
+    <tr><td>Úspěšnost</td><td>${teamPct}%</td></tr>
+    <tr><td>Zákroky</td><td>${keeperSaves}</td></tr>
+    <tr><td>Střely na branku</td><td>${keeperShots}</td></tr>
     <tr><td>Úspěšnost brankářů</td><td>${keeperPct}%</td></tr>
   `;
 
-  const playerRows = Object.values(playerMap).sort((a, b) => b.goals - a.goals || a.name.localeCompare(b.name, 'cs'));
-  const keeperRows = Object.values(keeperMap).sort((a, b) => b.saves - a.saves || a.name.localeCompare(b.name, 'cs'));
+  playersBody.innerHTML = playersArr.map(p=>{
+    const pct = p.shots ? Math.round((p.goals/p.shots)*100) : 0;
+    return `<tr><td>${p.name}</td><td>${p.matches}</td><td>${playerRating(p).toFixed(1)}</td><td>${p.goals}</td><td>${p.shots}</td><td>${pct}%</td><td>${p.assists}</td><td>${p.losses}</td><td>${p.techErrors}</td>
+    <td>${p.byType['9m'].goals}/${p.byType['9m'].shots}</td><td>${p.byType['6m'].goals}/${p.byType['6m'].shots}</td><td>${p.byType['Křídlo'].goals}/${p.byType['Křídlo'].shots}</td><td>${p.byType['Brejk'].goals}/${p.byType['Brejk'].shots}</td><td>${p.byType['7m'].goals}/${p.byType['7m'].shots}</td>
+    <td>${p.defPlus}</td><td>${p.defMinus}</td><td>${p.interruptions}</td><td>${p.blocks}</td><td>${p.gains}</td><td>${p.caused7m}</td><td>${p.twoMin}</td><td>${p.yellow}</td><td>${p.red}</td></tr>`;
+  }).join('');
 
-  playersBody.innerHTML = playerRows.length ? playerRows.map(player => {
-    const pct = player.shots ? Math.round((player.goals / player.shots) * 100) : 0;
-    return `
-      <tr>
-        <td>${player.name}</td><td>${player.matches}</td><td>${playerRating(player).toFixed(1)}</td><td>${player.goals}</td><td>${player.shots}</td><td>${pct}%</td><td>${player.assists}</td><td>${player.losses}</td><td>${player.techErrors}</td>
-        <td>${player.byType['9m'].goals}/${player.byType['9m'].shots}</td><td>${player.byType['6m'].goals}/${player.byType['6m'].shots}</td><td>${player.byType['Křídlo'].goals}/${player.byType['Křídlo'].shots}</td><td>${player.byType['Brejk'].goals}/${player.byType['Brejk'].shots}</td><td>${player.byType['7m'].goals}/${player.byType['7m'].shots}</td>
-        <td>${player.defPlus}</td><td>${player.defMinus}</td><td>${player.interruptions}</td><td>${player.blocks}</td><td>${player.gains}</td><td>${player.caused7m}</td><td>${player.twoMin}</td><td>${player.yellow}</td><td>${player.red}</td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="23">Zatím žádná data</td></tr>';
-
-  keepersBody.innerHTML = keeperRows.length ? keeperRows.map(keeper => {
-    const pct = keeper.shots ? Math.round((keeper.saves / keeper.shots) * 100) : 0;
-    return `
-      <tr>
-        <td>${keeper.name}</td><td>${keeper.matches}</td><td>${keeperRating(keeper).toFixed(1)}</td><td>${keeper.saves}</td><td>${keeper.shots}</td><td>${pct}%</td>
-        <td>${keeper.byType['9m'].saves}/${keeper.byType['9m'].shots}</td><td>${keeper.byType['6m'].saves}/${keeper.byType['6m'].shots}</td><td>${keeper.byType['Křídlo'].saves}/${keeper.byType['Křídlo'].shots}</td><td>${keeper.byType['Brejk'].saves}/${keeper.byType['Brejk'].shots}</td><td>${keeper.byType['7m'].saves}/${keeper.byType['7m'].shots}</td><td>${keeper.fastPlus}</td><td>${keeper.fastMinus}</td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="13">Zatím žádná data</td></tr>';
+  keepersBody.innerHTML = keepersArr.map(k=>{
+    const pct = k.shots ? Math.round((k.saves/k.shots)*100) : 0;
+    return `<tr><td>${k.name}</td><td>${k.matches}</td><td>${keeperRating(k).toFixed(1)}</td><td>${k.saves}</td><td>${k.shots}</td><td>${pct}%</td>
+    <td>${k.byType['9m'].saves}/${k.byType['9m'].shots}</td><td>${k.byType['6m'].saves}/${k.byType['6m'].shots}</td><td>${k.byType['Křídlo'].saves}/${k.byType['Křídlo'].shots}</td><td>${k.byType['Brejk'].saves}/${k.byType['Brejk'].shots}</td><td>${k.byType['7m'].saves}/${k.byType['7m'].shots}</td>
+    <td>${k.fastPlus}</td><td>${k.fastMinus}</td></tr>`;
+  }).join('');
 }
 
-function renderNav() {
-  document.getElementById('navMatches').className = app.screen === 'matches' ? 'dark' : 'light';
-  document.getElementById('navSetup').className = app.screen === 'setup' ? 'dark' : 'light';
-  document.getElementById('navLive').className = app.screen === 'live' ? 'dark' : 'light';
-  document.getElementById('navOverview').className = app.screen === 'overview' ? 'dark' : 'light';
-  document.getElementById('navSeason').className = app.screen === 'season' ? 'dark' : 'light';
+function render() {
   document.getElementById('screenMatches').classList.toggle('hidden', app.screen !== 'matches');
   document.getElementById('screenSetup').classList.toggle('hidden', app.screen !== 'setup');
   document.getElementById('screenLive').classList.toggle('hidden', app.screen !== 'live');
   document.getElementById('screenOverview').classList.toggle('hidden', app.screen !== 'overview');
   document.getElementById('screenSeason').classList.toggle('hidden', app.screen !== 'season');
-}
 
-function render() {
-  renderNav();
   renderMatches();
   renderRosterLists();
   renderSetup();
   renderLive();
   renderOverview();
   renderSeason();
+
   saveState();
 }
 
-window.addEventListener('load', () => {
-  const byId = id => document.getElementById(id);
-  byId('newDate').value = new Date().toISOString().slice(0, 10);
-  byId('navMatches').onclick = () => showScreen('matches');
-  byId('navSetup').onclick = () => showScreen('setup');
-  byId('navLive').onclick = () => showScreen('live');
-  byId('navOverview').onclick = () => showScreen('overview');
-  byId('navSeason').onclick = () => showScreen('season');
-  byId('createMatchBtn').onclick = createMatch;
-  byId('addRosterPlayerBtn').onclick = addRosterPlayer;
-  byId('addRosterKeeperBtn').onclick = addRosterKeeper;
-  byId('setupGoLiveBtn').onclick = () => showScreen('live');
-  byId('modePlayerBtn').onclick = () => setMode('player');
-  byId('modeKeeperBtn').onclick = () => setMode('keeper');
-  byId('tabAttack').onclick = () => setTab('attack');
-  byId('tabDefense').onclick = () => setTab('defense');
-  byId('tabPenalty').onclick = () => setTab('penalty');
-  byId('ourGoalBtn').onclick = () => addGoal('our');
-  byId('oppGoalBtn').onclick = () => addGoal('opp');
-  byId('resetScoreBtn').onclick = resetScore;
-  byId('undoBtn').onclick = undoLast;
-  loadState();
-  render();
-});
+function wire() {
+  document.getElementById('navMatches').onclick = () => showScreen('matches');
+  document.getElementById('navSetup').onclick = () => showScreen('setup');
+  document.getElementById('navLive').onclick = () => showScreen('live');
+  document.getElementById('navOverview').onclick = () => showScreen('overview');
+  document.getElementById('navSeason').onclick = () => showScreen('season');
+
+  document.getElementById('createMatchBtn').onclick = createMatch;
+  document.getElementById('addRosterPlayerBtn').onclick = addRosterPlayer;
+  document.getElementById('addRosterKeeperBtn').onclick = addRosterKeeper;
+  document.getElementById('setupGoLiveBtn').onclick = () => showScreen('live');
+  document.getElementById('undoBtn').onclick = undoLast;
+
+  document.getElementById('modePlayerBtn').onclick = () => setMode('player');
+  document.getElementById('modeKeeperBtn').onclick = () => setMode('keeper');
+  document.getElementById('tabAttack').onclick = () => setTab('attack');
+  document.getElementById('tabDefense').onclick = () => setTab('defense');
+  document.getElementById('tabPenalty').onclick = () => setTab('penalty');
+
+  document.getElementById('ourGoalBtn').onclick = () => addGoal('our');
+  document.getElementById('oppGoalBtn').onclick = () => addGoal('opp');
+  document.getElementById('resetScoreBtn').onclick = resetScore;
+}
+
+loadState();
+wire();
+render();
 </script>
 </body>
 </html>
-  let totalInterruptions = 0;
-  let totalBlocks = 0;
-  let totalGains = 0;
-  let totalCaused7 = 0;
-  let totalTwoMin = 0;
-  let totalYellow = 0;
-  let totalRed = 0;
-  let totalKeeperSaves = 0;
-  let totalKeeperShots = 0;
-
-  for (const match of app.matches) {
-    for (const player of match.players.filter(p => p.active)) {
-      totalGoals += player.goals;
-      totalShots += player.shots;
-      totalAssists += player.as
