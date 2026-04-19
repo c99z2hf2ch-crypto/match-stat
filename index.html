@@ -59,7 +59,8 @@
       <div class="small" style="margin-top:6px">Zápasy, sestava, nominace, hráči, brankáři, přehled, sezóna a auto-save</div>
     </div>
     <div class="row">
-      <button id="navMatches" class="dark">Zápasy</button>
+      <button id="navMatches" class="light">Zápasy</button>
+      <button id="navRoaster" class="light">Hráči</button>
       <button id="navSetup" class="light">Sestava zápasu</button>
       <button id="navLive" class="light">Zápas</button>
       <button id="navOverview" class="light">Přehled</button>
@@ -70,6 +71,30 @@
   <section id="screenMatches">
    
   </section>
+  <section id="screenRoster" class="hidden">
+  <div class="card">
+    <div class="between" style="margin-bottom:10px">
+      <h2 style="margin:0;font-size:22px">Sestava</h2>
+      <div class="small">Úprava seznamu hráčů a brankářů</div>
+    </div>
+    <div class="row" style="margin-bottom:10px">
+      <input id="newRosterPlayer" placeholder="Nový hráč" />
+      <button id="addRosterPlayerBtn" class="blue">Přidat hráče</button>
+      <input id="newRosterKeeper" placeholder="Nový brankář" />
+      <button id="addRosterKeeperBtn" class="blue">Přidat brankáře</button>
+    </div>
+    <div class="setup-grid">
+      <div>
+        <h3 style="margin:0 0 8px 0">Hráči</h3>
+        <div id="rosterPlayersList" style="display:grid;gap:8px"></div>
+      </div>
+      <div>
+        <h3 style="margin:0 0 8px 0">Brankáři</h3>
+        <div id="rosterKeepersList" style="display:grid;gap:8px"></div>
+      </div>
+    </div>
+  </div>
+</section>
   <section id="screenRoster" class="hidden">
   <div class="card">
     <div class="between" style="margin-bottom:10px">
