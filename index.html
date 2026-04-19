@@ -68,44 +68,35 @@
   </div>
 
   <section id="screenMatches">
-    <div class="card">
-      <div class="between" style="margin-bottom:10px">
-        <h2 style="margin:0;font-size:22px">Sestava</h2>
-        <div class="small">Úprava seznamu hráčů a brankářů</div>
-      </div>
-      <div class="row" style="margin-bottom:10px">
-        <input id="newRosterPlayer" placeholder="Nový hráč" />
-        <button id="addRosterPlayerBtn" class="blue">Přidat hráče</button>
-        <input id="newRosterKeeper" placeholder="Nový brankář" />
-        <button id="addRosterKeeperBtn" class="blue">Přidat brankáře</button>
-      </div>
-      <div class="setup-grid">
-        <div>
-          <h3 style="margin:0 0 8px 0">Hráči</h3>
-          <div id="rosterPlayersList" style="display:grid;gap:8px"></div>
-        </div>
-        <div>
-          <h3 style="margin:0 0 8px 0">Brankáři</h3>
-          <div id="rosterKeepersList" style="display:grid;gap:8px"></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card row">
-      <input id="newOpponent" placeholder="Soupeř" />
-      <input id="newDate" type="date" />
-      <input id="newCompetition" placeholder="Soutěž" />
-      <button id="createMatchBtn" class="green">Nový zápas</button>
-    </div>
-
-    <div class="card">
-      <div class="between" style="margin-bottom:10px">
-        <h2 style="margin:0;font-size:22px">Seznam zápasů</h2>
-        <div class="small">Klikni na otevření nebo nastavení sestavy</div>
-      </div>
-      <div id="matchesList" style="display:grid;gap:10px"></div>
-    </div>
+   
   </section>
+  <section id="screenRoster" class="hidden">
+  <div class="card">
+    <div class="between" style="margin-bottom:10px">
+      <h2 style="margin:0;font-size:22px">Sestava</h2>
+      <div class="small">Úprava hráčů a brankářů</div>
+    </div>
+
+    <div class="row" style="margin-bottom:10px">
+      <input id="newRosterPlayer" placeholder="Nový hráč" />
+      <button id="addRosterPlayerBtn" class="blue">Přidat hráče</button>
+
+      <input id="newRosterKeeper" placeholder="Nový brankář" />
+      <button id="addRosterKeeperBtn" class="blue">Přidat brankáře</button>
+    </div>
+
+    <div class="setup-grid">
+      <div>
+        <h3>Hráči</h3>
+        <div id="rosterPlayersList"></div>
+      </div>
+      <div>
+        <h3>Brankáři</h3>
+        <div id="rosterKeepersList"></div>
+      </div>
+    </div>
+  </div>
+</section>
 
   <section id="screenSetup" class="hidden">
     <div class="card between">
@@ -327,7 +318,7 @@ function loadState() {
 function normalizeApp() {
   if (!Array.isArray(app.history)) app.history = [];
   if (!['attack','defense','penalty'].includes(app.playerTab)) app.playerTab = 'attack';
-  if (!['matches','setup','live','overview','season'].includes(app.screen)) app.screen = 'matches';
+  if (!['matches','roster','setup','live','overview','season'].includes(app.screen)) app.screen = 'matches';
   if (!['player','keeper'].includes(app.mode)) app.mode = 'player';
   if (!Array.isArray(app.masterPlayers) || !app.masterPlayers.length) app.masterPlayers = [...defaultPlayers];
   if (!Array.isArray(app.masterKeepers) || !app.masterKeepers.length) app.masterKeepers = [...defaultKeepers];
@@ -1109,6 +1100,7 @@ function renderSeason() {
 
 function render() {
   document.getElementById('screenMatches').classList.toggle('hidden', app.screen !== 'matches');
+  document.getElementById('screenRoster').classList.toggle('hidden', app.screen !== 'roster');
   document.getElementById('screenSetup').classList.toggle('hidden', app.screen !== 'setup');
   document.getElementById('screenLive').classList.toggle('hidden', app.screen !== 'live');
   document.getElementById('screenOverview').classList.toggle('hidden', app.screen !== 'overview');
@@ -1126,6 +1118,7 @@ function render() {
 
 function wire() {
   document.getElementById('navMatches').onclick = () => showScreen('matches');
+  document.getElementById('navRoster').onclick = () => showScreen('roster');
   document.getElementById('navSetup').onclick = () => showScreen('setup');
   document.getElementById('navLive').onclick = () => showScreen('live');
   document.getElementById('navOverview').onclick = () => showScreen('overview');
